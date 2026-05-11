@@ -84,7 +84,7 @@ let keys = {};
 let score = 0;
 let gameOver = false;
 let frame = 0;
-
+let trailPoints = [];
 
 // ====================
 // 入力
@@ -135,6 +135,7 @@ function resetGame() {
   player.speed = player.normalSpeed;
 
   bullets = [];
+  trailPoints = [];
 
   backgrounds[0].x = 0;
   backgrounds[1].x = canvas.width;
@@ -222,12 +223,36 @@ function update() {
   if (keys["ArrowLeft"]) player.x -= player.speed;
   if (keys["ArrowRight"]) player.x += player.speed;
 
-
   // 画面外制限
-
   player.x = Math.max(0, Math.min(canvas.width - player.w, player.x));
   player.y = Math.max(0, Math.min(canvas.height - player.h, player.y));
-
+  
+  // 軌跡も左へ流す
+  trailPoints.forEach(p => {
+    p.x -= bgSpeed * 2;
+  });
+  
+  // 回転込みで、ボード下あたりの位置を計算
+  const rad = player.rotation * Math.PI / 180;
+  
+  const centerX = player.x + player.w / 2;
+  const centerY = player.y + player.h / 2;
+  
+  const localX = -player.w * 0.15;
+  const localY = player.h * 0.35;
+  
+  const trailX = centerX + localX * Math.cos(rad) - localY * Math.sin(rad);
+  const trailY = centerY + localX * Math.sin(rad) + localY * Math.cos(rad);
+  
+  // 軌跡を記録
+  trailPoints.push({
+    x: trailX,
+    y: trailY
+  });
+  
+  if (trailPoints.length > 25) {
+    trailPoints.shift();
+  }
 
   // 背景スクロール
 
@@ -309,6 +334,124 @@ function update() {
 
 }
 
+// ====================
+// 滑走エフェクト
+// ====================
+  
+function drawTrailEffect() {
+
+  if (trailPoints.length < 2) return;
+
+
+  let forwardPower = 1.0;
+
+  if (keys["ArrowLeft"]) {
+    forwardPower = 0.45;
+  }
+
+  if (keys["ArrowRight"]) {
+    forwardPower = 1.25;
+  }
+
+  if (player.spin) {
+    forwardPower = 1.8;
+  }
+
+  const speedPower = forwardPower;
+
+  ctx.save();
+  ctx.lineCap = "round";
+  ctx.lineJoin = "round";
+
+  for (let i = 1; i < trailPoints.length; i++) {
+
+    // 全部描かず、断続的に光らせる
+    if (Math.random() < 0.35) continue;
+
+    const p1 = trailPoints[i - 1];
+    const p2 = trailPoints[i];
+
+    const alpha = i / trailPoints.length * 0.9;
+
+    const jitterX = 30 * speedPower;
+    const jitterY = 24 * speedPower;
+
+    const midX = (p1.x + p2.x) / 2 + (Math.random() - 0.5) *   jitterX;
+    const midY = (p1.y + p2.y) / 2 + (Math.random() - 0.5) *   jitterY;
+
+    // 外側の青い発光
+    ctx.shadowBlur = 30 * speedPower;
+    ctx.shadowColor = "rgba(60,180,255,1)";
+    ctx.strokeStyle = `rgba(40,140,255,${alpha * 0.35})`;
+    ctx.lineWidth = 10 * speedPower;
+
+    ctx.beginPath();
+    ctx.moveTo(p1.x, p1.y);
+    ctx.lineTo(midX, midY);
+    ctx.lineTo(p2.x, p2.y);
+    ctx.stroke();
+
+    // 中心の白い雷芯
+    ctx.shadowBlur = 8 * speedPower;
+    ctx.strokeStyle = `rgba(245,255,255,${alpha})`;
+    ctx.lineWidth = 2;
+
+    ctx.beginPath();
+    ctx.moveTo(p1.x, p1.y);
+    ctx.lineTo(midX, midY);
+    ctx.lineTo(p2.x, p2.y);
+    ctx.stroke();
+
+    // 枝雷
+    if (Math.random() < 0.18 * speedPower) {
+
+      const branchLen = (4 + Math.random() * 10) * speedPower;
+      const branchDir = Math.random() < 0.5 ? -1 : 1;
+
+      ctx.shadowBlur = 12 * speedPower;
+      ctx.strokeStyle = `rgba(150,230,255,${alpha * 0.8})`;
+      ctx.lineWidth = 1.5;
+
+      ctx.beginPath();
+      ctx.moveTo(midX, midY);
+      ctx.lineTo(
+        midX - branchLen,
+        midY + branchDir * branchLen
+      );
+      ctx.stroke();
+    }
+  }
+
+  // ボード直後の破裂スパーク
+  const last = trailPoints[trailPoints.length - 1];
+
+  if (last && Math.random() < 0.65 * speedPower) {
+
+    const sparkCount = Math.floor(3 * speedPower);
+
+    for (let i = 0; i < sparkCount; i++) {
+
+      const angle = Math.PI + (Math.random() - 0.5) * 1.5;
+      const len = (12 + Math.random() * 30) * speedPower;
+
+      ctx.shadowBlur = 14 * speedPower;
+      ctx.shadowColor = "rgba(80,190,255,1)";
+      ctx.strokeStyle = "rgba(230,255,255,0.85)";
+      ctx.lineWidth = 2;
+
+      ctx.beginPath();
+      ctx.moveTo(last.x, last.y);
+      ctx.lineTo(
+        last.x + Math.cos(angle) * len,
+        last.y + Math.sin(angle) * len
+      );
+      ctx.stroke();
+    }
+  }
+
+  ctx.restore();
+}
+
 
 // ====================
 // 描画
@@ -337,6 +480,9 @@ function draw() {
 
   });
 
+  // 背景のあと、プレイヤーの前
+  // 滑走線
+  drawTrailEffect();
 
   // プレイヤー
 
