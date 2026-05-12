@@ -85,6 +85,10 @@ let score = 0;
 let gameOver = false;
 let frame = 0;
 let trailPoints = [];
+let parryCount = 0;
+let parryFlash = 0;
+
+const MAX_PARRY = 3;
 
 // ====================
 // 入力
@@ -142,6 +146,8 @@ function resetGame() {
 
   score = 0;
   frame = 0;
+  parryCount = 0;
+  parryFlash = 0;
   gameOver = false;
 }
 
@@ -312,25 +318,41 @@ function update() {
   // 当たり判定
 
   bullets.forEach((b, i) => {
-
-    if (
-      hit(player, b) &&
-      player.invincible <= 0 &&
-      !player.spin
-    ) {
-
+  
+    if (!hit(player, b)) return;
+  
+    // スピン中ならパリィ
+    if (player.spin) {
       bullets.splice(i, 1);
+      parryCount = Math.min(
+        parryCount + 1,
+        MAX_PARRY
+      );
 
+      parryFlash = 12;
+
+      return;
+    }
+  
+    // 通常時なら被弾
+    if (player.invincible <= 0) {
+  
+      bullets.splice(i, 1);
+  
       player.damage++;
       player.invincible = 60;
-
+  
       if (player.damage >= 3) {
         gameOver = true;
       }
-
     }
-
+  
   });
+
+  // パリィエフェクト減衰
+  if (parryFlash > 0) {
+    parryFlash--;
+  }
 
 }
 
@@ -484,6 +506,33 @@ function draw() {
   // 滑走線
   drawTrailEffect();
 
+  // パリィ発光
+  if (parryFlash > 0) {
+  
+    const alpha = parryFlash / 12;
+  
+    ctx.save();
+  
+    ctx.globalCompositeOperation = "lighter";
+  
+    ctx.fillStyle =
+      `rgba(120,220,255,${alpha * 0.5})`;
+  
+    ctx.beginPath();
+  
+    ctx.arc(
+      player.x + player.w / 2,
+      player.y + player.h / 2,
+      80,
+      0,
+      Math.PI * 2
+    );
+  
+    ctx.fill();
+  
+    ctx.restore();
+  }
+
   // プレイヤー
 
   if (playerImg.complete) {
@@ -551,6 +600,11 @@ function draw() {
     70
   );
 
+  ctx.fillText(
+    "Parry: " + parryCount,
+    20,
+    105
+  );
 
   // ゲームオーバー
 
