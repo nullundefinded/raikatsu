@@ -74,6 +74,13 @@ const player = {
   rotation: 0
 };
 
+// ====================
+// 超電磁杭
+// ====================
+
+const stakeImg = new Image();
+stakeImg.src = "stake.png";
+
 
 // ====================
 // ゲーム変数
@@ -87,6 +94,7 @@ let frame = 0;
 let trailPoints = [];
 let parryCount = 0;
 let parryFlash = 0;
+let stakes = [];
 
 const MAX_PARRY = 3;
 
@@ -112,6 +120,17 @@ document.addEventListener("keydown", e => {
   
   }
 
+  if (
+    e.code === "KeyX" &&
+    !gameOver &&
+    parryCount >= MAX_PARRY
+  ) {
+  
+    fireStake();
+  
+    parryCount = 0;
+  }
+
   if (gameOver && e.key === "Enter") {
     resetGame();
   }
@@ -127,7 +146,6 @@ document.addEventListener("keyup", e => {
 // ====================
 
 function resetGame() {
-
   player.x = 100;
   player.y = 200;
   player.damage = 0;
@@ -139,6 +157,7 @@ function resetGame() {
   player.speed = player.normalSpeed;
 
   bullets = [];
+  stakes = [];
   trailPoints = [];
 
   backgrounds[0].x = 0;
@@ -168,6 +187,21 @@ function spawnBullet() {
 
 }
 
+// ====================
+// 超電磁杭生成
+// ====================
+
+function fireStake() {
+
+  stakes.push({
+    x: player.x + player.w - 20,
+    y: player.y + player.h / 2 - 10,
+    w: 160,
+    h: 20,
+    speed: 14
+  });
+
+}
 
 // ====================
 // 当たり判定
@@ -307,6 +341,21 @@ function update() {
 
   bullets = bullets.filter(b => b.x + b.w > 0);
 
+  // 超電磁杭移動
+  stakes.forEach(s => {
+    s.x += s.speed;
+  });
+
+  stakes = stakes.filter(s => s.x < canvas.width);
+
+  // 超電磁杭弾消し処理
+  stakes.forEach(s => {
+
+    bullets = bullets.filter(b => {
+      return !hit(s, b);
+    });
+  
+  });
 
   // 無敵時間
 
@@ -582,6 +631,24 @@ function draw() {
 
   });
 
+  // 超電磁杭
+  stakes.forEach(s => {
+  
+    if (stakeImg.complete) {
+      ctx.drawImage(
+        stakeImg,
+        s.x,
+        s.y,
+        s.w,
+        s.h
+      );
+    } else {
+      ctx.fillStyle = "cyan";
+      ctx.fillRect(s.x, s.y, s.w, s.h);
+    }
+  
+  });
+
 
   // UI
 
@@ -600,11 +667,30 @@ function draw() {
     70
   );
 
+  // パリィゲージ
+  ctx.fillStyle =
+    parryCount >= MAX_PARRY
+      ? "cyan"
+      : "white";
+  
   ctx.fillText(
-    "Parry: " + parryCount,
+    `Parry: ${parryCount} / ${MAX_PARRY}`,
     20,
     105
   );
+
+  // 必殺技使用可能表示
+  if (parryCount >= MAX_PARRY) {
+  
+    ctx.fillStyle = "cyan";
+    ctx.font = "20px sans-serif";
+  
+    ctx.fillText(
+      "RAIL STAKE READY",
+      20,
+      135
+    );
+  }
 
   // ゲームオーバー
 
