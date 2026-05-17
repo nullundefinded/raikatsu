@@ -81,6 +81,12 @@ const player = {
 const stakeImg = new Image();
 stakeImg.src = "stake.png";
 
+// ====================
+// 敵弾
+// ====================
+
+const bulletImg = new Image();
+bulletImg.src = "bullet.png";
 
 // ====================
 // ゲーム変数
@@ -179,9 +185,9 @@ function spawnBullet() {
 
   bullets.push({
     x: canvas.width,
-    y: Math.random() * (canvas.height - 20),
-    w: 20,
-    h: 20,
+    y: Math.random() * (canvas.height - 42),
+    w: 48,
+    h: 42,
     speed: 6
   });
 
@@ -617,18 +623,47 @@ function draw() {
 
 
   // 弾
-
-  ctx.fillStyle = "red";
-
   bullets.forEach(b => {
-
-    ctx.fillRect(
-      b.x,
-      b.y,
-      b.w,
-      b.h
-    );
-
+  
+    // 残像
+    ctx.save();
+    ctx.globalAlpha = 0.25;
+  
+    if (bulletImg.complete) {
+      ctx.drawImage(
+        bulletImg,
+        b.x + 14,
+        b.y,
+        b.w,
+        b.h
+      );
+  
+      ctx.globalAlpha = 0.12;
+  
+      ctx.drawImage(
+        bulletImg,
+        b.x + 28,
+        b.y,
+        b.w,
+        b.h
+      );
+    }
+  
+    ctx.restore();
+  
+    // 本体
+    if (bulletImg.complete) {
+      ctx.drawImage(
+        bulletImg,
+        b.x,
+        b.y,
+        b.w,
+        b.h
+      );
+    } else {
+      ctx.fillStyle = "red";
+      ctx.fillRect(b.x, b.y, b.w, b.h);
+    }
   });
 
   // 超電磁杭
