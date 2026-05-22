@@ -448,34 +448,47 @@ function updateEffects() {
 // ====================
 
 function update() {
-
   if (gameOver) return;
-
   frame++;
-
   // プレイヤー動作
   updatePlayer();
-
   // 背景スクロール
   updateBackground();
-
   // スコア
   score += 1;
-
   // 難易度上昇
   let difficulty = Math.floor(score / 600);
-  
   // 弾生成
   updateBulletSpawner(difficulty);
-
   // 超電磁杭更新
   updateStake();
-
   // 弾更新
-  updateBullets()
-
+  updateBullets();
   // エフェクト
   updateEffects();
+}
+
+// ====================
+// 背景描画
+// ====================
+
+function drawBackground() {
+
+  backgrounds.forEach(bg => {
+
+    if (bg.img.complete) {
+
+      ctx.drawImage(
+        bg.img,
+        bg.x,
+        0,
+        canvas.width,
+        canvas.height
+      );
+
+    }
+
+  });
 
 }
 
@@ -597,107 +610,106 @@ function drawTrailEffect() {
   ctx.restore();
 }
 
+// ====================
+// パリィ発光
+// ====================
+
+function drawParryFlash() {
+
+  if (parryFlash <= 0) return;
+
+  const alpha = parryFlash / 12;
+
+  ctx.save();
+
+  ctx.globalCompositeOperation = "lighter";
+
+  ctx.fillStyle =
+    `rgba(120,220,255,${alpha * 0.5})`;
+
+  ctx.beginPath();
+
+  ctx.arc(
+    player.x + player.w / 2,
+    player.y + player.h / 2,
+    80,
+    0,
+    Math.PI * 2
+  );
+
+  ctx.fill();
+
+  ctx.restore();
+
+}
+
 
 // ====================
-// 描画
+// エフェクト描画
 // ====================
 
-function draw() {
-
-  ctx.clearRect(0, 0, canvas.width, canvas.height);
-
-
-  // 背景
-
-  backgrounds.forEach(bg => {
-
-    if (bg.img.complete) {
-
-      ctx.drawImage(
-        bg.img,
-        bg.x,
-        0,
-        canvas.width,
-        canvas.height
-      );
-
-    }
-
-  });
-
-  // 背景のあと、プレイヤーの前
-  // 滑走線
+function drawEffects() {
+  // 滑走エフェクト
   drawTrailEffect();
-
   // パリィ発光
-  if (parryFlash > 0) {
-  
-    const alpha = parryFlash / 12;
-  
-    ctx.save();
-  
-    ctx.globalCompositeOperation = "lighter";
-  
-    ctx.fillStyle =
-      `rgba(120,220,255,${alpha * 0.5})`;
-  
-    ctx.beginPath();
-  
-    ctx.arc(
-      player.x + player.w / 2,
-      player.y + player.h / 2,
-      80,
-      0,
-      Math.PI * 2
-    );
-  
-    ctx.fill();
-  
-    ctx.restore();
+  drawParryFlash();
+
+}
+
+// ====================
+// プレイヤー描画
+// ====================
+
+function drawPlayer() {
+
+  if (!playerImg.complete) return;
+
+  // 無敵中点滅
+  if (
+    player.invincible > 0 &&
+    Math.floor(player.invincible / 5) % 2 !== 0
+  ) {
+    return;
   }
 
-  // プレイヤー
+  ctx.save();
 
-  if (playerImg.complete) {
-  
-    // 無敵中点滅
-    if (
-      player.invincible <= 0 ||
-      Math.floor(player.invincible / 5) % 2 === 0
-    ) {
-  
-      ctx.save();
+  ctx.translate(
+    player.x + player.w / 2,
+    player.y + player.h / 2
+  );
 
-      ctx.translate(
-        player.x + player.w / 2,
-        player.y + player.h / 2
-      );
-      
-      ctx.rotate(player.rotation * Math.PI / 180);
-      
-      ctx.drawImage(
-        playerImg,
-        -player.w / 2,
-        -player.h / 2,
-        player.w,
-        player.h
-      );
-      
-      ctx.restore();
-  
-    }
-  
-  }
+  ctx.rotate(
+    player.rotation * Math.PI / 180
+  );
 
+  ctx.drawImage(
+    playerImg,
+    -player.w / 2,
+    -player.h / 2,
+    player.w,
+    player.h
+  );
 
-  // 弾
+  ctx.restore();
+
+}
+
+// ====================
+// 弾描画
+// ====================
+
+function drawBullets() {
+
   bullets.forEach(b => {
-  
+
     // 残像
     ctx.save();
+
     ctx.globalAlpha = 0.25;
-  
+
     if (bulletImg.complete) {
+
       ctx.drawImage(
         bulletImg,
         b.x + 14,
@@ -705,9 +717,9 @@ function draw() {
         b.w,
         b.h
       );
-  
+
       ctx.globalAlpha = 0.12;
-  
+
       ctx.drawImage(
         bulletImg,
         b.x + 28,
@@ -715,12 +727,14 @@ function draw() {
         b.w,
         b.h
       );
+
     }
-  
+
     ctx.restore();
-  
+
     // 本体
     if (bulletImg.complete) {
+
       ctx.drawImage(
         bulletImg,
         b.x,
@@ -728,16 +742,34 @@ function draw() {
         b.w,
         b.h
       );
+
     } else {
+
       ctx.fillStyle = "red";
-      ctx.fillRect(b.x, b.y, b.w, b.h);
+
+      ctx.fillRect(
+        b.x,
+        b.y,
+        b.w,
+        b.h
+      );
+
     }
+
   });
 
-  // 超電磁杭
+}
+
+// ====================
+// 超電磁杭描画
+// ====================
+
+function drawStake() {
+
   stakes.forEach(s => {
-  
+
     if (stakeImg.complete) {
+
       ctx.drawImage(
         stakeImg,
         s.x,
@@ -745,15 +777,29 @@ function draw() {
         s.w,
         s.h
       );
+
     } else {
+
       ctx.fillStyle = "cyan";
-      ctx.fillRect(s.x, s.y, s.w, s.h);
+
+      ctx.fillRect(
+        s.x,
+        s.y,
+        s.w,
+        s.h
+      );
+
     }
-  
+
   });
 
+}
 
-  // UI
+// ====================
+// UI描画
+// ====================
+
+function drawUI() {
 
   ctx.fillStyle = "white";
   ctx.font = "24px sans-serif";
@@ -775,7 +821,7 @@ function draw() {
     parryCount >= MAX_PARRY
       ? "cyan"
       : "white";
-  
+
   ctx.fillText(
     `Parry: ${parryCount} / ${MAX_PARRY}`,
     20,
@@ -784,10 +830,10 @@ function draw() {
 
   // 必殺技使用可能表示
   if (parryCount >= MAX_PARRY) {
-  
+
     ctx.fillStyle = "cyan";
     ctx.font = "20px sans-serif";
-  
+
     ctx.fillText(
       "RAIL STAKE READY",
       20,
@@ -796,7 +842,6 @@ function draw() {
   }
 
   // ゲームオーバー
-
   if (gameOver) {
 
     ctx.fillStyle = "rgba(0,0,0,0.7)";
@@ -823,8 +868,34 @@ function draw() {
       300,
       270
     );
-
   }
+}
+
+// ====================
+// 描画
+// ====================
+
+function draw() {
+
+  ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+  // 背景
+  drawBackground();
+
+  // エフェクト
+  drawEffects();  
+
+  // プレイヤー
+  drawPlayer();
+
+  // 弾
+  drawBullets();
+
+  // 超電磁杭
+  drawStake();
+
+  // UI
+  drawUI();
 
 }
 
