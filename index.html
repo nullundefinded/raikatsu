@@ -225,24 +225,21 @@ function hit(a, b) {
 }
 
 
+
 // ====================
-// 更新
+// プレイヤー更新
 // ====================
 
-function update() {
-
-  if (gameOver) return;
-
-  frame++;
+function updatePlayer() {
 
   // スピン中処理
   if (player.spin) {
-  
+
     player.spinTimer++;
-  
+
     const spinTotal = 30;
     const overshootEnd = 22;
-  
+
     if (player.spinTimer <= overshootEnd) {
       // 0 → 390度まで右回転
       const t = player.spinTimer / overshootEnd;
@@ -252,18 +249,16 @@ function update() {
       const t = (player.spinTimer - overshootEnd) / (spinTotal - overshootEnd);
       player.rotation = 390 - 30 * t;
     }
-  
+
     if (player.spinTimer >= spinTotal) {
       player.spin = false;
       player.spinTimer = 0;
       player.rotation = 0;
       player.speed = player.normalSpeed;
     }
-  
   }
 
   // プレイヤー移動
-
   if (keys["ArrowUp"]) player.y -= player.speed;
   if (keys["ArrowDown"]) player.y += player.speed;
   if (keys["ArrowLeft"]) player.x -= player.speed;
@@ -272,35 +267,40 @@ function update() {
   // 画面外制限
   player.x = Math.max(0, Math.min(canvas.width - player.w, player.x));
   player.y = Math.max(0, Math.min(canvas.height - player.h, player.y));
-  
+
   // 軌跡も左へ流す
   trailPoints.forEach(p => {
     p.x -= bgSpeed * 2;
   });
-  
+
   // 回転込みで、ボード下あたりの位置を計算
   const rad = player.rotation * Math.PI / 180;
-  
+
   const centerX = player.x + player.w / 2;
   const centerY = player.y + player.h / 2;
-  
+
   const localX = -player.w * 0.15;
   const localY = player.h * 0.35;
-  
+
   const trailX = centerX + localX * Math.cos(rad) - localY * Math.sin(rad);
   const trailY = centerY + localX * Math.sin(rad) + localY * Math.cos(rad);
-  
+
   // 軌跡を記録
   trailPoints.push({
     x: trailX,
     y: trailY
   });
-  
+
   if (trailPoints.length > 25) {
     trailPoints.shift();
   }
+}
 
-  // 背景スクロール
+// ====================
+// 背景更新
+// ====================
+
+function updateBackground() {
 
   backgrounds.forEach(bg => {
     bg.x -= bgSpeed;
@@ -317,42 +317,48 @@ function update() {
 
   });
 
+}
 
-  // スコア
+// ====================
+// 弾生成更新
+// ====================
 
-  score += 1;
+function updateBulletSpawner(difficulty) {
 
-  // 難易度上昇
-  let difficulty = Math.floor(score / 600);
-  
-  // 弾の発生間隔。数字が小さいほど多く出る
-  let bulletInterval = Math.max(15, 45 - difficulty * 3);
-  
-  // 一度に出る弾の数
-  let bulletCount = 1 + Math.floor(difficulty / 4);
-  
+  // 弾の発生間隔、数字が小さいほど多く出る
+  const bulletInterval =
+    Math.max(15, 45 - difficulty * 3);
+
+  // 一度に出る弾数
+  const bulletCount =
+    1 + Math.floor(difficulty / 4);
+
   // 弾生成
   if (frame % bulletInterval === 0) {
+
     for (let i = 0; i < bulletCount; i++) {
       spawnBullet();
     }
+
   }
 
+}
 
-  // 弾移動
+// ====================
+// 超電磁杭更新
+// ====================
 
-  bullets.forEach(b => {
-    b.x -= b.speed;
-  });
-
-  bullets = bullets.filter(b => b.x + b.w > 0);
+function updateStake() {
 
   // 超電磁杭移動
   stakes.forEach(s => {
     s.x += s.speed;
   });
 
-  stakes = stakes.filter(s => s.x < canvas.width);
+  // 画面外削除
+  stakes = stakes.filter(
+    s => s.x < canvas.width + s.w
+  );
 
   // 超電磁杭弾消し処理
   stakes.forEach(s => {
@@ -360,25 +366,42 @@ function update() {
     bullets = bullets.filter(b => {
       return !hit(s, b);
     });
-  
+
   });
 
-  // 無敵時間
+}
 
+// ====================
+// 弾更新
+// ====================
+
+function updateBullets() {
+
+  // 弾移動
+  bullets.forEach(b => {
+    b.x -= b.speed;
+  });
+
+  // 画面外削除
+  bullets = bullets.filter(
+    b => b.x + b.w > 0
+  );
+
+  // 無敵時間
   if (player.invincible > 0) {
     player.invincible--;
   }
 
-
   // 当たり判定
-
   bullets.forEach((b, i) => {
-  
+
     if (!hit(player, b)) return;
-  
+
     // スピン中ならパリィ
     if (player.spin) {
+
       bullets.splice(i, 1);
+
       parryCount = Math.min(
         parryCount + 1,
         MAX_PARRY
@@ -388,26 +411,71 @@ function update() {
 
       return;
     }
-  
+
     // 通常時なら被弾
     if (player.invincible <= 0) {
-  
+
       bullets.splice(i, 1);
-  
+
       player.damage++;
       player.invincible = 60;
-  
+
       if (player.damage >= 3) {
         gameOver = true;
       }
+
     }
-  
+
   });
 
-  // パリィエフェクト減衰
+}
+
+// ====================
+// エフェクト更新
+// ====================
+
+function updateEffects() {
+
+  // パリィ発光減衰
   if (parryFlash > 0) {
     parryFlash--;
   }
+
+}
+
+// ====================
+// 更新
+// ====================
+
+function update() {
+
+  if (gameOver) return;
+
+  frame++;
+
+  // プレイヤー動作
+  updatePlayer();
+
+  // 背景スクロール
+  updateBackground();
+
+  // スコア
+  score += 1;
+
+  // 難易度上昇
+  let difficulty = Math.floor(score / 600);
+  
+  // 弾生成
+  updateBulletSpawner(difficulty);
+
+  // 超電磁杭更新
+  updateStake();
+
+  // 弾更新
+  updateBullets()
+
+  // エフェクト
+  updateEffects();
 
 }
 
