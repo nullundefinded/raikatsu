@@ -56,6 +56,12 @@ const bgSpeed = 2;
 const playerImg = new Image();
 playerImg.src = "player.png";
 
+const playerRailstakeReadyImg = new Image();
+playerRailstakeReadyImg.src = "player_railstake_ready.png";
+
+const playerRailstakeThrowImg = new Image();
+playerRailstakeThrowImg.src = "player_railstake_throw.png";
+
 const player = {
   x: 100,
   y: 200,
@@ -71,7 +77,12 @@ const player = {
 
   spin: false,
   spinTimer: 0,
-  rotation: 0
+  rotation: 0,
+
+  special: false,
+  specialPhase: "none",
+  specialTimer: 0,
+  stakeFired: false
 };
 
 // ====================
@@ -107,6 +118,8 @@ let parryFlash = 0;
 let stakes = [];
 
 const MAX_PARRY = 3;
+const SPECIAL_READY_FRAMES = 12;
+const SPECIAL_THROW_FRAMES = 14;
 
 // ====================
 // 入力
@@ -136,9 +149,7 @@ document.addEventListener("keydown", e => {
     parryCount >= MAX_PARRY
   ) {
   
-    fireStake();
-  
-    parryCount = 0;
+    startSpecial();
   }
 
   if (gameOver && e.key === "Enter") {
@@ -165,6 +176,10 @@ function resetGame() {
   player.spinTimer = 0;
   player.rotation = 0;
   player.speed = player.normalSpeed;
+  player.special = false;
+  player.specialPhase = "none";
+  player.specialTimer = 0;
+  player.stakeFired = false;
 
   bullets = [];
   stakes = [];
@@ -211,6 +226,52 @@ function fireStake() {
     speed: 14
   });
 
+}
+
+function startSpecial() {
+
+  player.special = true;
+  player.specialPhase = "ready";
+  player.specialTimer = 0;
+  player.stakeFired = false;
+
+  parryCount = 0;
+}
+
+function updateSpecial() {
+
+  if (!player.special) return;
+
+  player.specialTimer++;
+
+  if (
+    player.specialPhase === "ready" &&
+    player.specialTimer >= SPECIAL_READY_FRAMES
+  ) {
+    player.specialPhase = "fire";
+    player.specialTimer = 0;
+  }
+
+  if (player.specialPhase === "fire") {
+
+    if (!player.stakeFired) {
+      fireStake();
+      player.stakeFired = true;
+    }
+
+    player.specialPhase = "throw";
+    player.specialTimer = 0;
+  }
+
+  if (
+    player.specialPhase === "throw" &&
+    player.specialTimer >= SPECIAL_THROW_FRAMES
+  ) {
+    player.special = false;
+    player.specialPhase = "none";
+    player.specialTimer = 0;
+    player.stakeFired = false;
+  }
 }
 
 // ====================
@@ -458,6 +519,8 @@ function update() {
   frame++;
   // プレイヤー動作
   updatePlayer();
+  // 必殺技演出
+  updateSpecial();
   // 背景スクロール
   updateBackground();
   // スコア
@@ -668,7 +731,21 @@ function drawEffects() {
 
 function drawPlayer() {
 
-  if (!imageReady(playerImg)) return;
+  let currentPlayerImg = playerImg;
+  let drawScale = 1;
+  let drawOffsetY = 0;
+
+  if (player.specialPhase === "ready") {
+    currentPlayerImg = playerRailstakeReadyImg;
+    drawScale = 1.14;
+    drawOffsetY = -12;
+  }
+
+  if (player.specialPhase === "throw") {
+    currentPlayerImg = playerRailstakeThrowImg;
+  }
+
+  if (!imageReady(currentPlayerImg)) return;
 
   // 無敵中点滅
   if (
@@ -689,12 +766,15 @@ function drawPlayer() {
     player.rotation * Math.PI / 180
   );
 
+  const drawW = player.w * drawScale;
+  const drawH = player.h * drawScale;
+
   ctx.drawImage(
-    playerImg,
-    -player.w / 2,
-    -player.h / 2,
-    player.w,
-    player.h
+    currentPlayerImg,
+    -drawW / 2,
+    -drawH / 2 + drawOffsetY,
+    drawW,
+    drawH
   );
 
   ctx.restore();
