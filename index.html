@@ -81,6 +81,10 @@ const player = {
 const stakeImg = new Image();
 stakeImg.src = "stake.png";
 
+function imageReady(img) {
+  return img.complete && img.naturalWidth > 0;
+}
+
 // ====================
 // 敵弾
 // ====================
@@ -393,9 +397,11 @@ function updateBullets() {
   }
 
   // 当たり判定
-  bullets.forEach((b, i) => {
+  for (let i = bullets.length - 1; i >= 0; i--) {
 
-    if (!hit(player, b)) return;
+    const b = bullets[i];
+
+    if (!hit(player, b)) continue;
 
     // スピン中ならパリィ
     if (player.spin) {
@@ -409,7 +415,7 @@ function updateBullets() {
 
       parryFlash = 12;
 
-      return;
+      continue;
     }
 
     // 通常時なら被弾
@@ -426,7 +432,7 @@ function updateBullets() {
 
     }
 
-  });
+  }
 
 }
 
@@ -476,7 +482,7 @@ function drawBackground() {
 
   backgrounds.forEach(bg => {
 
-    if (bg.img.complete) {
+    if (imageReady(bg.img)) {
 
       ctx.drawImage(
         bg.img,
@@ -662,7 +668,7 @@ function drawEffects() {
 
 function drawPlayer() {
 
-  if (!playerImg.complete) return;
+  if (!imageReady(playerImg)) return;
 
   // 無敵中点滅
   if (
@@ -708,7 +714,7 @@ function drawBullets() {
 
     ctx.globalAlpha = 0.25;
 
-    if (bulletImg.complete) {
+    if (imageReady(bulletImg)) {
 
       ctx.drawImage(
         bulletImg,
@@ -733,7 +739,7 @@ function drawBullets() {
     ctx.restore();
 
     // 本体
-    if (bulletImg.complete) {
+    if (imageReady(bulletImg)) {
 
       ctx.drawImage(
         bulletImg,
@@ -768,7 +774,7 @@ function drawStake() {
 
   stakes.forEach(s => {
 
-    if (stakeImg.complete) {
+    if (imageReady(stakeImg)) {
 
       ctx.drawImage(
         stakeImg,
