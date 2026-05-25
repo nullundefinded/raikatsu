@@ -66,6 +66,9 @@ const bg2 = new Image();
 bg1.src = "background1.png";
 bg2.src = "background2.png";
 
+const titleImg = new Image();
+titleImg.src = "title_font.png";
+
 const backgrounds = [
   { img: bg1, x: 0 },
   { img: bg2, x: canvas.width }
@@ -136,17 +139,26 @@ let bullets = [];
 let keys = {};
 let score = 0;
 let gameOver = false;
+let gameState = "title";
 let frame = 0;
 let trailPoints = [];
 let parryCount = 0;
 let parryFlash = 0;
 let stakes = [];
+let titleMenuIndex = 0;
 
 const MAX_PARRY = 3;
 const SPECIAL_READY_FRAMES = 12;
 const SPECIAL_THROW_FRAMES = 14;
 const STAKE_MUZZLE_FLASH_FRAMES = 5;
 let showHitBoxes = false;
+
+const TITLE_MENU_ITEMS = [
+  "START",
+  "HOW TO PLAY",
+  "CONFIG",
+  "CREDITS"
+];
 
 // ====================
 // 入力
@@ -155,6 +167,28 @@ let showHitBoxes = false;
 document.addEventListener("keydown", e => {
 
   keys[e.key] = true;
+
+  if (gameState === "title") {
+
+    if (e.code === "ArrowUp") {
+      titleMenuIndex =
+        (titleMenuIndex + TITLE_MENU_ITEMS.length - 1) %
+        TITLE_MENU_ITEMS.length;
+    }
+
+    if (e.code === "ArrowDown") {
+      titleMenuIndex =
+        (titleMenuIndex + 1) %
+        TITLE_MENU_ITEMS.length;
+    }
+
+    if (e.key === "Enter" && titleMenuIndex === 0) {
+      resetGame();
+      gameState = "playing";
+    }
+
+    return;
+  }
 
   if (
     e.code === "Space" &&
@@ -181,6 +215,7 @@ document.addEventListener("keydown", e => {
 
   if (gameOver && e.key === "Enter") {
     resetGame();
+    gameState = "playing";
   }
 
 });
@@ -626,6 +661,7 @@ function updateEffects() {
 // ====================
 
 function update() {
+  if (gameState === "title") return;
   if (gameOver) return;
   frame++;
   // プレイヤー動作
@@ -1234,6 +1270,65 @@ function drawHitBoxes() {
 }
 
 // ====================
+// タイトル描画
+// ====================
+
+function drawTitle() {
+
+  drawBackground();
+
+  ctx.fillStyle = "rgba(0,0,0,0.55)";
+  ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+  ctx.textAlign = "center";
+
+  if (imageReady(titleImg)) {
+
+    const titleW = 250;
+    const titleH = titleW * titleImg.naturalHeight / titleImg.naturalWidth;
+    const titleOffsetX = 20;
+
+    ctx.drawImage(
+      titleImg,
+      canvas.width / 2 - titleW / 2 + titleOffsetX,
+      58,
+      titleW,
+      titleH
+    );
+
+  } else {
+
+    ctx.fillStyle = "white";
+    ctx.font = "72px serif";
+    ctx.fillText(
+      "雷滑",
+      canvas.width / 2,
+      135
+    );
+  }
+
+  ctx.font = "24px sans-serif";
+
+  TITLE_MENU_ITEMS.forEach((item, i) => {
+
+    const y = 245 + i * 42;
+    const selected = i === titleMenuIndex;
+
+    ctx.fillStyle = selected
+      ? "cyan"
+      : "white";
+
+    ctx.fillText(
+      `${selected ? "> " : "  "}${item}${selected ? " <" : "  "}`,
+      canvas.width / 2,
+      y
+    );
+  });
+
+  ctx.textAlign = "left";
+}
+
+// ====================
 // UI描画
 // ====================
 
@@ -1316,6 +1411,11 @@ function drawUI() {
 function draw() {
 
   ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+  if (gameState === "title") {
+    drawTitle();
+    return;
+  }
 
   // 背景
   drawBackground();
