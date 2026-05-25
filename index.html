@@ -12,6 +12,24 @@ body {
   justify-content: center;
   align-items: center;
   height: 100vh;
+  font-family: sans-serif;
+}
+
+.game-wrap {
+  position: relative;
+}
+
+.debug-toggle {
+  position: absolute;
+  left: 0;
+  top: -34px;
+  color: white;
+  font-size: 14px;
+  user-select: none;
+}
+
+.debug-toggle input {
+  vertical-align: middle;
 }
 
 canvas {
@@ -23,12 +41,19 @@ canvas {
 
 <body>
 
-<canvas id="game" width="800" height="450"></canvas>
+<div class="game-wrap">
+  <label class="debug-toggle">
+    <input id="hitboxToggle" type="checkbox">
+    当たり判定
+  </label>
+  <canvas id="game" width="800" height="450"></canvas>
+</div>
 
 <script>
 
 const canvas = document.getElementById("game");
 const ctx = canvas.getContext("2d");
+const hitboxToggle = document.getElementById("hitboxToggle");
 
 
 // ====================
@@ -121,6 +146,7 @@ const MAX_PARRY = 3;
 const SPECIAL_READY_FRAMES = 12;
 const SPECIAL_THROW_FRAMES = 14;
 const STAKE_MUZZLE_FLASH_FRAMES = 5;
+let showHitBoxes = false;
 
 // ====================
 // 入力
@@ -160,6 +186,10 @@ document.addEventListener("keydown", e => {
 });
 document.addEventListener("keyup", e => {
   keys[e.key] = false;
+});
+
+hitboxToggle.addEventListener("change", e => {
+  showHitBoxes = e.target.checked;
 });
 
 
@@ -294,6 +324,77 @@ function hit(a, b) {
     a.y + a.h > b.y
   );
 
+}
+
+function stakeEffectTriangle(s) {
+
+  const trailLength = 145;
+  const effectRadius = 36;
+  const tipX = s.x + s.w;
+  const centerY = s.y + s.h / 2;
+
+  return {
+    a: {
+      x: tipX - trailLength,
+      y: centerY - effectRadius
+    },
+    b: {
+      x: tipX - trailLength,
+      y: centerY + effectRadius
+    },
+    c: {
+      x: tipX,
+      y: centerY
+    }
+  };
+}
+
+function pointInTriangle(p, a, b, c) {
+
+  const d1 =
+    (p.x - b.x) * (a.y - b.y) -
+    (a.x - b.x) * (p.y - b.y);
+  const d2 =
+    (p.x - c.x) * (b.y - c.y) -
+    (b.x - c.x) * (p.y - c.y);
+  const d3 =
+    (p.x - a.x) * (c.y - a.y) -
+    (c.x - a.x) * (p.y - a.y);
+
+  const hasNegative = d1 < 0 || d2 < 0 || d3 < 0;
+  const hasPositive = d1 > 0 || d2 > 0 || d3 > 0;
+
+  return !(hasNegative && hasPositive);
+}
+
+function hitTriangleWithRect(triangle, rect) {
+
+  const points = [
+    {
+      x: rect.x + rect.w / 2,
+      y: rect.y + rect.h / 2
+    },
+    {
+      x: rect.x,
+      y: rect.y
+    },
+    {
+      x: rect.x + rect.w,
+      y: rect.y
+    },
+    {
+      x: rect.x,
+      y: rect.y + rect.h
+    },
+    {
+      x: rect.x + rect.w,
+      y: rect.y + rect.h
+    }
+  ];
+
+  return points.some(p =>
+    pointInTriangle(p, triangle.a, triangle.b, triangle.c)
+  );
 }
 
 
@@ -436,8 +537,10 @@ function updateStake() {
   // 超電磁杭弾消し処理
   stakes.forEach(s => {
 
+    const effectTriangle = stakeEffectTriangle(s);
+
     bullets = bullets.filter(b => {
-      return !hit(s, b);
+      return !hit(s, b) && !hitTriangleWithRect(effectTriangle, b);
     });
 
   });
@@ -1057,6 +1160,80 @@ function drawStake() {
 }
 
 // ====================
+// 当たり判定表示
+// ====================
+
+function drawHitBox(box, color) {
+
+  ctx.fillStyle = color.fill;
+  ctx.strokeStyle = color.stroke;
+  ctx.lineWidth = 2;
+
+  ctx.fillRect(box.x, box.y, box.w, box.h);
+  ctx.strokeRect(box.x, box.y, box.w, box.h);
+}
+
+function drawHitTriangle(triangle, color) {
+
+  ctx.fillStyle = color.fill;
+  ctx.strokeStyle = color.stroke;
+  ctx.lineWidth = 2;
+
+  ctx.beginPath();
+  ctx.moveTo(triangle.a.x, triangle.a.y);
+  ctx.lineTo(triangle.b.x, triangle.b.y);
+  ctx.lineTo(triangle.c.x, triangle.c.y);
+  ctx.closePath();
+  ctx.fill();
+  ctx.stroke();
+}
+
+function drawHitBoxes() {
+
+  if (!showHitBoxes) return;
+
+  ctx.save();
+
+  drawHitBox(
+    player,
+    {
+      fill: "rgba(80,255,120,0.12)",
+      stroke: "rgba(80,255,120,0.85)"
+    }
+  );
+
+  bullets.forEach(b => {
+    drawHitBox(
+      b,
+      {
+        fill: "rgba(255,80,80,0.12)",
+        stroke: "rgba(255,80,80,0.85)"
+      }
+    );
+  });
+
+  stakes.forEach(s => {
+    drawHitTriangle(
+      stakeEffectTriangle(s),
+      {
+        fill: "rgba(190,90,255,0.10)",
+        stroke: "rgba(190,90,255,0.75)"
+      }
+    );
+
+    drawHitBox(
+      s,
+      {
+        fill: "rgba(80,230,255,0.14)",
+        stroke: "rgba(80,230,255,0.9)"
+      }
+    );
+  });
+
+  ctx.restore();
+}
+
+// ====================
 // UI描画
 // ====================
 
@@ -1154,6 +1331,9 @@ function draw() {
 
   // 超電磁杭
   drawStake();
+
+  // 当たり判定
+  drawHitBoxes();
 
   // UI
   drawUI();
