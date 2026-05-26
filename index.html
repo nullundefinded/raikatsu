@@ -62,12 +62,11 @@ const hitboxToggle = document.getElementById("hitboxToggle");
 
 const bg1 = new Image();
 const bg2 = new Image();
+const titleBgImg = new Image();
 
 bg1.src = "background1.png";
 bg2.src = "background2.png";
-
-const titleImg = new Image();
-titleImg.src = "title_font.png";
+titleBgImg.src = "title.png";
 
 const backgrounds = [
   { img: bg1, x: 0 },
@@ -708,6 +707,39 @@ function drawBackground() {
 
 }
 
+function drawCoverImage(img) {
+
+  if (!imageReady(img)) return;
+
+  const imageRatio = img.naturalWidth / img.naturalHeight;
+  const canvasRatio = canvas.width / canvas.height;
+
+  let sx = 0;
+  let sy = 0;
+  let sw = img.naturalWidth;
+  let sh = img.naturalHeight;
+
+  if (imageRatio > canvasRatio) {
+    sw = img.naturalHeight * canvasRatio;
+    sx = (img.naturalWidth - sw) / 2;
+  } else {
+    sh = img.naturalWidth / canvasRatio;
+    sy = (img.naturalHeight - sh) / 2;
+  }
+
+  ctx.drawImage(
+    img,
+    sx,
+    sy,
+    sw,
+    sh,
+    0,
+    0,
+    canvas.width,
+    canvas.height
+  );
+}
+
 // ====================
 // 滑走エフェクト
 // ====================
@@ -1275,37 +1307,24 @@ function drawHitBoxes() {
 
 function drawTitle() {
 
-  drawBackground();
+  if (imageReady(titleBgImg)) {
+    drawCoverImage(titleBgImg);
+  } else {
+    drawBackground();
+  }
 
-  ctx.fillStyle = "rgba(0,0,0,0.55)";
+  ctx.fillStyle = "rgba(0,0,0,0.35)";
   ctx.fillRect(0, 0, canvas.width, canvas.height);
 
   ctx.textAlign = "center";
 
-  if (imageReady(titleImg)) {
-
-    const titleW = 250;
-    const titleH = titleW * titleImg.naturalHeight / titleImg.naturalWidth;
-    const titleOffsetX = 20;
-
-    ctx.drawImage(
-      titleImg,
-      canvas.width / 2 - titleW / 2 + titleOffsetX,
-      58,
-      titleW,
-      titleH
-    );
-
-  } else {
-
-    ctx.fillStyle = "white";
-    ctx.font = "72px serif";
-    ctx.fillText(
-      "雷滑",
-      canvas.width / 2,
-      135
-    );
-  }
+  ctx.fillStyle = "white";
+  ctx.font = "64px sans-serif";
+  ctx.fillText(
+    "TACHIKAGE",
+    canvas.width / 2,
+    140
+  );
 
   ctx.font = "24px sans-serif";
 
