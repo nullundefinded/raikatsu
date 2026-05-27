@@ -1303,7 +1303,7 @@ function drawStake() {
 }
 
 // ====================
-// 当たり判定表示
+// 当たり判定デバッグ描画
 // ====================
 
 function drawHitBox(box, color) {
@@ -1376,6 +1376,10 @@ function drawHitBoxes() {
   ctx.restore();
 }
 
+// ====================
+// 外部UI描画
+// ====================
+
 function drawDebugUI() {
 
   debugCtx.clearRect(0, 0, debugCanvas.width, debugCanvas.height);
@@ -1416,10 +1420,6 @@ function drawDebugUI() {
 
   debugCtx.restore();
 }
-
-// ====================
-// タイトル描画
-// ====================
 
 function drawDialogueUI(speaker, text, promptText = "Enter") {
 
@@ -1481,6 +1481,10 @@ function drawDialogueUI(speaker, text, promptText = "Enter") {
   dialogueCtx.restore();
 }
 
+// ====================
+// タイトル画面描画
+// ====================
+
 function drawTitle() {
 
   if (imageReady(titleBgImg)) {
@@ -1525,7 +1529,7 @@ function drawTitle() {
 }
 
 // ====================
-// UI描画
+// ストーリー画面描画
 // ====================
 
 function drawStoryCharacter(img, side, active) {
@@ -1643,6 +1647,10 @@ function drawStory() {
   );
 }
 
+// ====================
+// ゲーム画面UI描画
+// ====================
+
 function drawUI() {
 
   ctx.fillStyle = "white";
@@ -1716,23 +1724,10 @@ function drawUI() {
 }
 
 // ====================
-// 描画
+// ゲーム画面描画
 // ====================
 
-function draw() {
-
-  ctx.clearRect(0, 0, canvas.width, canvas.height);
-
-  if (gameState === "title") {
-    drawTitle();
-    return;
-  }
-
-  if (gameState === "story") {
-    drawStory();
-    return;
-  }
-
+function drawGame() {
   // 背景
   drawBackground();
 
@@ -1753,9 +1748,27 @@ function draw() {
 
   // UI
   drawUI();
+}
 
-  // 当たり判定切替
+// ====================
+// 描画入口
+// ====================
 
+function draw() {
+
+  ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+  switch (gameState) {
+    case "title":
+      drawTitle();
+      break;
+    case "story":
+      drawStory();
+      break;
+    case "playing":
+      drawGame();
+      break;
+  }
 }
 
 
