@@ -17,24 +17,16 @@ body {
 
 .game-wrap {
   position: relative;
-}
-
-.debug-toggle {
-  position: absolute;
-  left: 0;
-  top: -34px;
-  color: white;
-  font-size: 14px;
-  user-select: none;
-}
-
-.debug-toggle input {
-  vertical-align: middle;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 8px;
 }
 
 canvas {
   border: 2px solid white;
   background: black;
+  cursor: default;
 }
 </style>
 </head>
@@ -42,18 +34,16 @@ canvas {
 <body>
 
 <div class="game-wrap">
-  <label class="debug-toggle">
-    <input id="hitboxToggle" type="checkbox">
-    当たり判定
-  </label>
+  <canvas id="debug-ui" width="130" height="28"></canvas>
   <canvas id="game" width="800" height="450"></canvas>
 </div>
 
 <script>
 
+const debugCanvas = document.getElementById("debug-ui");
+const debugCtx = debugCanvas.getContext("2d");
 const canvas = document.getElementById("game");
 const ctx = canvas.getContext("2d");
-const hitboxToggle = document.getElementById("hitboxToggle");
 
 
 // ====================
@@ -152,6 +142,13 @@ const SPECIAL_THROW_FRAMES = 14;
 const STAKE_MUZZLE_FLASH_FRAMES = 5;
 let showHitBoxes = false;
 
+const HITBOX_TOGGLE = {
+  x: 0,
+  y: 0,
+  w: 130,
+  h: 28
+};
+
 const TITLE_MENU_ITEMS = [
   "START",
   "HOW TO PLAY",
@@ -222,8 +219,21 @@ document.addEventListener("keyup", e => {
   keys[e.key] = false;
 });
 
-hitboxToggle.addEventListener("change", e => {
-  showHitBoxes = e.target.checked;
+debugCanvas.addEventListener("click", e => {
+
+  const rect = debugCanvas.getBoundingClientRect();
+  const x = (e.clientX - rect.left) * debugCanvas.width / rect.width;
+  const y = (e.clientY - rect.top) * debugCanvas.height / rect.height;
+
+  if (
+    x >= HITBOX_TOGGLE.x &&
+    x <= HITBOX_TOGGLE.x + HITBOX_TOGGLE.w &&
+    y >= HITBOX_TOGGLE.y &&
+    y <= HITBOX_TOGGLE.y + HITBOX_TOGGLE.h
+  ) {
+    showHitBoxes = !showHitBoxes;
+    drawDebugUI();
+  }
 });
 
 
@@ -1301,6 +1311,47 @@ function drawHitBoxes() {
   ctx.restore();
 }
 
+function drawDebugUI() {
+
+  debugCtx.clearRect(0, 0, debugCanvas.width, debugCanvas.height);
+  debugCtx.save();
+
+  debugCtx.fillStyle = showHitBoxes
+    ? "rgba(60,220,255,0.22)"
+    : "rgba(0,0,0,0.35)";
+  debugCtx.strokeStyle = showHitBoxes
+    ? "rgba(90,240,255,0.95)"
+    : "rgba(255,255,255,0.55)";
+  debugCtx.lineWidth = 2;
+
+  debugCtx.fillRect(
+    HITBOX_TOGGLE.x,
+    HITBOX_TOGGLE.y,
+    HITBOX_TOGGLE.w,
+    HITBOX_TOGGLE.h
+  );
+  debugCtx.strokeRect(
+    HITBOX_TOGGLE.x,
+    HITBOX_TOGGLE.y,
+    HITBOX_TOGGLE.w,
+    HITBOX_TOGGLE.h
+  );
+
+  debugCtx.fillStyle = showHitBoxes
+    ? "cyan"
+    : "white";
+  debugCtx.font = "14px sans-serif";
+  debugCtx.textAlign = "center";
+  debugCtx.textBaseline = "middle";
+  debugCtx.fillText(
+    `HIT BOX ${showHitBoxes ? "ON" : "OFF"}`,
+    HITBOX_TOGGLE.x + HITBOX_TOGGLE.w / 2,
+    HITBOX_TOGGLE.y + HITBOX_TOGGLE.h / 2
+  );
+
+  debugCtx.restore();
+}
+
 // ====================
 // タイトル描画
 // ====================
@@ -1345,6 +1396,7 @@ function drawTitle() {
   });
 
   ctx.textAlign = "left";
+
 }
 
 // ====================
@@ -1451,11 +1503,15 @@ function draw() {
   // 超電磁杭
   drawStake();
 
+  drawHitBoxes();
+
   // 当たり判定
   drawHitBoxes();
 
   // UI
   drawUI();
+
+  // 当たり判定切替
 
 }
 
@@ -1468,6 +1524,7 @@ function loop() {
 
   update();
   draw();
+  drawDebugUI();
 
   requestAnimationFrame(loop);
 
