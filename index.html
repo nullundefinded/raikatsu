@@ -39,6 +39,7 @@ canvas {
   <canvas id="dialogue-ui" width="800" height="120"></canvas>
 </div>
 
+<script src="story.js"></script>
 <script>
 
 const debugCanvas = document.getElementById("debug-ui");
@@ -70,7 +71,8 @@ const storyImages = {
   },
   sherry: {
     normal: new Image(),
-    laugh: new Image()
+    laugh: new Image(),
+    smug: new Image()
   }
 };
 
@@ -78,6 +80,7 @@ storyImages.tachikage.normal.src = "tachikage_normal.png";
 storyImages.tachikage.laugh.src = "tachikage_laugh.png";
 storyImages.sherry.normal.src = "sherry_normal.png";
 storyImages.sherry.laugh.src = "sherry_laugh.png";
+storyImages.sherry.smug.src = "sherry_smug.png";
 
 const backgrounds = [
   { img: bg1, x: 0 },
@@ -179,18 +182,12 @@ const TITLE_MENU_ITEMS = [
   "CREDITS"
 ];
 
-const STORY_LINES = [
+const STORY_LINES = window.STORY_LINES || [
   {
-    speaker: "Tachikage",
+    speaker: "System",
     character: "tachikage",
     face: "normal",
-    text: "テスト文章その1"
-  },
-  {
-    speaker: "Sherry",
-    character: "sherry",
-    face: "normal",
-    text: "テスト文章その2"
+    text: "story.jsが読み込めませんでした。"
   }
 ];
 
@@ -1462,11 +1459,13 @@ function drawDialogueUI(speaker, text, promptText = "Enter") {
   );
 
   dialogueCtx.fillStyle = "white";
-  dialogueCtx.font = "22px sans-serif";
-  dialogueCtx.fillText(
+  dialogueCtx.font = "21px sans-serif";
+  drawDialogueText(
     text,
     24,
-    52
+    52,
+    dialogueCanvas.width - 48,
+    26
   );
 
   dialogueCtx.fillStyle = "rgba(255,255,255,0.65)";
@@ -1479,6 +1478,31 @@ function drawDialogueUI(speaker, text, promptText = "Enter") {
   );
 
   dialogueCtx.restore();
+}
+
+function drawDialogueText(text, x, y, maxWidth, lineHeight) {
+
+  let line = "";
+
+  [...text].forEach(char => {
+    const nextLine = line + char;
+
+    if (
+      line &&
+      dialogueCtx.measureText(nextLine).width > maxWidth
+    ) {
+      dialogueCtx.fillText(line, x, y);
+      line = char;
+      y += lineHeight;
+      return;
+    }
+
+    line = nextLine;
+  });
+
+  if (line) {
+    dialogueCtx.fillText(line, x, y);
+  }
 }
 
 // ====================
@@ -1587,55 +1611,52 @@ function drawStoryCharacter(img, side, active) {
   }
 }
 
+function currentStoryFace(character) {
+
+  let face = "normal";
+
+  for (let i = 0; i <= storyLineIndex; i++) {
+    if (STORY_LINES[i].character === character) {
+      face = STORY_LINES[i].face || "normal";
+    }
+  }
+
+  return face;
+}
+
 function drawStory() {
 
   const line = STORY_LINES[storyLineIndex];
   const isLastLine = storyLineIndex === STORY_LINES.length - 1;
+  const tachikageFace = currentStoryFace("tachikage");
+  const sherryFace = currentStoryFace("sherry");
 
   drawBackground();
   ctx.fillStyle = "rgba(0,0,0,0.38)";
   ctx.fillRect(0, 0, canvas.width, canvas.height);
 
   drawStoryCharacter(
-    storyImages.tachikage[
-      line.character === "tachikage"
-        ? line.face
-        : "normal"
-    ],
+    storyImages.tachikage[tachikageFace],
     "left",
     line.character === "tachikage"
   );
 
   drawStoryCharacter(
-    storyImages.sherry[
-      line.character === "sherry"
-        ? line.face
-        : "normal"
-    ],
+    storyImages.sherry[sherryFace],
     "right",
     line.character === "sherry"
   );
 
-  ctx.textAlign = "center";
-  ctx.textBaseline = "middle";
-
-  ctx.fillStyle = "white";
-  ctx.font = "40px sans-serif";
-  ctx.fillText(
-    "STORY",
-    canvas.width / 2,
-    canvas.height / 2 - 32
-  );
-
-  ctx.fillStyle = "rgba(255,255,255,0.8)";
-  ctx.font = "20px sans-serif";
-  ctx.fillText(
-    "Press Enter or Esc to return",
-    canvas.width / 2,
-    canvas.height / 2 + 28
-  );
-
+  ctx.fillStyle = "rgba(255,255,255,0.75)";
+  ctx.font = "16px sans-serif";
   ctx.textAlign = "left";
+  ctx.textBaseline = "top";
+  ctx.fillText(
+    "Press Esc to return",
+    18,
+    16
+  );
+
   ctx.textBaseline = "alphabetic";
 
   drawDialogueUI(
