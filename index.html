@@ -36,6 +36,7 @@ canvas {
 <div class="game-wrap">
   <canvas id="debug-ui" width="130" height="28"></canvas>
   <canvas id="game" width="800" height="450"></canvas>
+  <canvas id="dialogue-ui" width="800" height="120"></canvas>
 </div>
 
 <script>
@@ -44,6 +45,10 @@ const debugCanvas = document.getElementById("debug-ui");
 const debugCtx = debugCanvas.getContext("2d");
 const canvas = document.getElementById("game");
 const ctx = canvas.getContext("2d");
+const dialogueCanvas = document.getElementById("dialogue-ui");
+const dialogueCtx = dialogueCanvas.getContext("2d");
+const storyMaskCanvas = document.createElement("canvas");
+const storyMaskCtx = storyMaskCanvas.getContext("2d");
 
 
 // ====================
@@ -57,6 +62,22 @@ const titleBgImg = new Image();
 bg1.src = "background1.png";
 bg2.src = "background2.png";
 titleBgImg.src = "title.png";
+
+const storyImages = {
+  tachikage: {
+    normal: new Image(),
+    laugh: new Image()
+  },
+  sherry: {
+    normal: new Image(),
+    laugh: new Image()
+  }
+};
+
+storyImages.tachikage.normal.src = "tachikage_normal.png";
+storyImages.tachikage.laugh.src = "tachikage_laugh.png";
+storyImages.sherry.normal.src = "sherry_normal.png";
+storyImages.sherry.laugh.src = "sherry_laugh.png";
 
 const backgrounds = [
   { img: bg1, x: 0 },
@@ -135,6 +156,7 @@ let parryCount = 0;
 let parryFlash = 0;
 let stakes = [];
 let titleMenuIndex = 0;
+let storyLineIndex = 0;
 
 const MAX_PARRY = 3;
 const SPECIAL_READY_FRAMES = 12;
@@ -151,9 +173,25 @@ const HITBOX_TOGGLE = {
 
 const TITLE_MENU_ITEMS = [
   "START",
+  "STORY",
   "HOW TO PLAY",
   "CONFIG",
   "CREDITS"
+];
+
+const STORY_LINES = [
+  {
+    speaker: "Tachikage",
+    character: "tachikage",
+    face: "normal",
+    text: "テスト文章その1"
+  },
+  {
+    speaker: "Sherry",
+    character: "sherry",
+    face: "normal",
+    text: "テスト文章その2"
+  }
 ];
 
 // ====================
@@ -178,9 +216,36 @@ document.addEventListener("keydown", e => {
         TITLE_MENU_ITEMS.length;
     }
 
-    if (e.key === "Enter" && titleMenuIndex === 0) {
-      resetGame();
-      gameState = "playing";
+    if (e.key === "Enter") {
+      const selectedMenu = TITLE_MENU_ITEMS[titleMenuIndex];
+
+      if (selectedMenu === "START") {
+        resetGame();
+        gameState = "playing";
+      }
+
+      if (selectedMenu === "STORY") {
+        storyLineIndex = 0;
+        gameState = "story";
+      }
+    }
+
+    return;
+  }
+
+  if (gameState === "story") {
+
+    if (e.key === "Escape") {
+      gameState = "title";
+    }
+
+    if (e.key === "Enter") {
+
+      if (storyLineIndex < STORY_LINES.length - 1) {
+        storyLineIndex++;
+      } else {
+        gameState = "title";
+      }
     }
 
     return;
@@ -670,7 +735,7 @@ function updateEffects() {
 // ====================
 
 function update() {
-  if (gameState === "title") return;
+  if (gameState === "title" || gameState === "story") return;
   if (gameOver) return;
   frame++;
   // プレイヤー動作
@@ -1356,6 +1421,66 @@ function drawDebugUI() {
 // タイトル描画
 // ====================
 
+function drawDialogueUI(speaker, text, promptText = "Enter") {
+
+  dialogueCtx.clearRect(
+    0,
+    0,
+    dialogueCanvas.width,
+    dialogueCanvas.height
+  );
+
+  if (!text) return;
+
+  dialogueCtx.save();
+
+  dialogueCtx.fillStyle = "rgba(0,0,0,0.78)";
+  dialogueCtx.strokeStyle = "rgba(120,220,255,0.9)";
+  dialogueCtx.lineWidth = 2;
+
+  dialogueCtx.fillRect(
+    0,
+    0,
+    dialogueCanvas.width,
+    dialogueCanvas.height
+  );
+  dialogueCtx.strokeRect(
+    0,
+    0,
+    dialogueCanvas.width,
+    dialogueCanvas.height
+  );
+
+  dialogueCtx.fillStyle = "cyan";
+  dialogueCtx.font = "18px sans-serif";
+  dialogueCtx.textAlign = "left";
+  dialogueCtx.textBaseline = "top";
+  dialogueCtx.fillText(
+    speaker,
+    24,
+    18
+  );
+
+  dialogueCtx.fillStyle = "white";
+  dialogueCtx.font = "22px sans-serif";
+  dialogueCtx.fillText(
+    text,
+    24,
+    52
+  );
+
+  dialogueCtx.fillStyle = "rgba(255,255,255,0.65)";
+  dialogueCtx.font = "16px sans-serif";
+  dialogueCtx.textAlign = "right";
+  dialogueCtx.fillText(
+    promptText,
+    dialogueCanvas.width - 24,
+    dialogueCanvas.height - 30
+  );
+
+  dialogueCtx.restore();
+}
+
 function drawTitle() {
 
   if (imageReady(titleBgImg)) {
@@ -1402,6 +1527,121 @@ function drawTitle() {
 // ====================
 // UI描画
 // ====================
+
+function drawStoryCharacter(img, side, active) {
+
+  if (!imageReady(img)) return;
+
+  const targetH = 390;
+  const scale = targetH / img.naturalHeight;
+  const targetW = img.naturalWidth * scale;
+  const x = side === "left"
+    ? 36
+    : canvas.width - targetW - 36;
+  const y = canvas.height - targetH;
+
+  ctx.drawImage(
+    img,
+    x,
+    y,
+    targetW,
+    targetH
+  );
+
+  if (!active) {
+    storyMaskCanvas.width = targetW;
+    storyMaskCanvas.height = targetH;
+
+    storyMaskCtx.clearRect(
+      0,
+      0,
+      targetW,
+      targetH
+    );
+    storyMaskCtx.drawImage(
+      img,
+      0,
+      0,
+      targetW,
+      targetH
+    );
+    storyMaskCtx.globalCompositeOperation = "source-in";
+    storyMaskCtx.fillStyle = "rgba(0,0,0,0.45)";
+    storyMaskCtx.fillRect(
+      0,
+      0,
+      targetW,
+      targetH
+    );
+    storyMaskCtx.globalCompositeOperation = "source-over";
+
+    ctx.drawImage(
+      storyMaskCanvas,
+      x,
+      y
+    );
+  }
+}
+
+function drawStory() {
+
+  const line = STORY_LINES[storyLineIndex];
+  const isLastLine = storyLineIndex === STORY_LINES.length - 1;
+
+  drawBackground();
+  ctx.fillStyle = "rgba(0,0,0,0.38)";
+  ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+  drawStoryCharacter(
+    storyImages.tachikage[
+      line.character === "tachikage"
+        ? line.face
+        : "normal"
+    ],
+    "left",
+    line.character === "tachikage"
+  );
+
+  drawStoryCharacter(
+    storyImages.sherry[
+      line.character === "sherry"
+        ? line.face
+        : "normal"
+    ],
+    "right",
+    line.character === "sherry"
+  );
+
+  ctx.textAlign = "center";
+  ctx.textBaseline = "middle";
+
+  ctx.fillStyle = "white";
+  ctx.font = "40px sans-serif";
+  ctx.fillText(
+    "STORY",
+    canvas.width / 2,
+    canvas.height / 2 - 32
+  );
+
+  ctx.fillStyle = "rgba(255,255,255,0.8)";
+  ctx.font = "20px sans-serif";
+  ctx.fillText(
+    "Press Enter or Esc to return",
+    canvas.width / 2,
+    canvas.height / 2 + 28
+  );
+
+  ctx.textAlign = "left";
+  ctx.textBaseline = "alphabetic";
+
+  drawDialogueUI(
+    line.speaker,
+    line.text,
+    isLastLine
+      ? "Enter/Escでタイトルに戻る"
+      : "Enter"
+  );
+}
 
 function drawUI() {
 
@@ -1488,6 +1728,11 @@ function draw() {
     return;
   }
 
+  if (gameState === "story") {
+    drawStory();
+    return;
+  }
+
   // 背景
   drawBackground();
 
@@ -1525,6 +1770,9 @@ function loop() {
   update();
   draw();
   drawDebugUI();
+  if (gameState !== "story") {
+    drawDialogueUI("", "");
+  }
 
   requestAnimationFrame(loop);
 
