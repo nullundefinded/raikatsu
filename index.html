@@ -7,7 +7,7 @@
 <style>
 body {
   margin: 0;
-  background: #111;
+  background: #02080e;
   display: flex;
   justify-content: center;
   align-items: center;
@@ -25,8 +25,12 @@ body {
 
 canvas {
   border: 2px solid white;
-  background: black;
+  background: #02080e;
   cursor: default;
+}
+
+#dialogue-ui {
+  border: none;
 }
 </style>
 </head>
@@ -165,6 +169,8 @@ const MAX_PARRY = 3;
 const SPECIAL_READY_FRAMES = 12;
 const SPECIAL_THROW_FRAMES = 14;
 const STAKE_MUZZLE_FLASH_FRAMES = 5;
+const STORY_CHARACTER_ENTER_FRAMES = 18;
+const STORY_CHARACTER_SLIDE = 36;
 let showHitBoxes = false;
 
 const HITBOX_TOGGLE = {
@@ -190,6 +196,19 @@ const STORY_LINES = window.STORY_LINES || [
     text: "story.jsが読み込めませんでした。"
   }
 ];
+
+const storyCharacterStates = {
+  tachikage: {
+    face: "normal",
+    visible: false,
+    animFrame: STORY_CHARACTER_ENTER_FRAMES
+  },
+  sherry: {
+    face: "normal",
+    visible: false,
+    animFrame: STORY_CHARACTER_ENTER_FRAMES
+  }
+};
 
 // ====================
 // 入力
@@ -222,7 +241,7 @@ document.addEventListener("keydown", e => {
       }
 
       if (selectedMenu === "STORY") {
-        storyLineIndex = 0;
+        resetStory();
         gameState = "story";
       }
     }
@@ -239,7 +258,7 @@ document.addEventListener("keydown", e => {
     if (e.key === "Enter") {
 
       if (storyLineIndex < STORY_LINES.length - 1) {
-        storyLineIndex++;
+        advanceStoryLine();
       } else {
         gameState = "title";
       }
@@ -330,6 +349,44 @@ function resetGame() {
   parryCount = 0;
   parryFlash = 0;
   gameOver = false;
+}
+
+function resetStory() {
+
+  storyLineIndex = 0;
+
+  Object.values(storyCharacterStates).forEach(state => {
+    state.face = "normal";
+    state.visible = false;
+    state.animFrame = STORY_CHARACTER_ENTER_FRAMES;
+  });
+
+  applyStoryLine();
+}
+
+function advanceStoryLine() {
+
+  storyLineIndex++;
+  applyStoryLine();
+}
+
+function applyStoryLine() {
+
+  const line = STORY_LINES[storyLineIndex];
+
+  if (!line) return;
+
+  const state = storyCharacterStates[line.character];
+
+  if (!state) return;
+
+  const nextFace = line.face || "normal";
+
+  if (!state.visible || state.face !== nextFace) {
+    state.face = nextFace;
+    state.visible = true;
+    state.animFrame = 0;
+  }
 }
 
 
@@ -727,12 +784,28 @@ function updateEffects() {
 
 }
 
+function updateStory() {
+
+  Object.values(storyCharacterStates).forEach(state => {
+    if (
+      state.visible &&
+      state.animFrame < STORY_CHARACTER_ENTER_FRAMES
+    ) {
+      state.animFrame++;
+    }
+  });
+}
+
 // ====================
 // 更新
 // ====================
 
 function update() {
-  if (gameState === "title" || gameState === "story") return;
+  if (gameState === "title") return;
+  if (gameState === "story") {
+    updateStory();
+    return;
+  }
   if (gameOver) return;
   frame++;
   // プレイヤー動作
@@ -1431,46 +1504,54 @@ function drawDialogueUI(speaker, text, promptText = "Enter") {
 
   dialogueCtx.save();
 
-  dialogueCtx.fillStyle = "rgba(0,0,0,0.78)";
-  dialogueCtx.strokeStyle = "rgba(120,220,255,0.9)";
-  dialogueCtx.lineWidth = 2;
+  drawDialoguePanel();
 
-  dialogueCtx.fillRect(
-    0,
-    0,
-    dialogueCanvas.width,
-    dialogueCanvas.height
-  );
-  dialogueCtx.strokeRect(
-    0,
-    0,
-    dialogueCanvas.width,
-    dialogueCanvas.height
-  );
-
-  dialogueCtx.fillStyle = "cyan";
   dialogueCtx.font = "18px sans-serif";
+  const speakerNameWidth = dialogueCtx.measureText(speaker).width;
+  const speakerBoxW = Math.min(
+    dialogueCanvas.width - 40,
+    Math.max(184, speakerNameWidth + 118)
+  );
+
+  dialogueCtx.fillStyle = "rgba(0,0,0,0.72)";
+  dialogueCtx.strokeStyle = "rgba(80,240,255,0.75)";
+  dialogueCtx.lineWidth = 1;
+  dialogueCtx.fillRect(20, 14, speakerBoxW, 28);
+  dialogueCtx.strokeRect(20, 14, speakerBoxW, 28);
+
+  dialogueCtx.fillStyle = "rgba(80,240,255,0.95)";
+  dialogueCtx.font = "15px sans-serif";
   dialogueCtx.textAlign = "left";
-  dialogueCtx.textBaseline = "top";
+  dialogueCtx.textBaseline = "middle";
   dialogueCtx.fillText(
-    speaker,
-    24,
-    18
+    "SPEAKER",
+    32,
+    28
   );
 
   dialogueCtx.fillStyle = "white";
+  dialogueCtx.font = "18px sans-serif";
+  dialogueCtx.fillText(
+    speaker,
+    112,
+    28
+  );
+
+  dialogueCtx.fillStyle = "rgba(245,255,255,0.96)";
   dialogueCtx.font = "21px sans-serif";
+  dialogueCtx.textBaseline = "top";
   drawDialogueText(
     text,
     24,
-    52,
+    55,
     dialogueCanvas.width - 48,
     26
   );
 
-  dialogueCtx.fillStyle = "rgba(255,255,255,0.65)";
-  dialogueCtx.font = "16px sans-serif";
+  dialogueCtx.fillStyle = "rgba(80,240,255,0.75)";
+  dialogueCtx.font = "14px sans-serif";
   dialogueCtx.textAlign = "right";
+  dialogueCtx.textBaseline = "alphabetic";
   dialogueCtx.fillText(
     promptText,
     dialogueCanvas.width - 24,
@@ -1478,6 +1559,72 @@ function drawDialogueUI(speaker, text, promptText = "Enter") {
   );
 
   dialogueCtx.restore();
+}
+
+function drawDialoguePanel() {
+
+  const w = dialogueCanvas.width;
+  const h = dialogueCanvas.height;
+
+  dialogueCtx.beginPath();
+  dialogueCtx.moveTo(18, 0);
+  dialogueCtx.lineTo(w - 1, 0);
+  dialogueCtx.lineTo(w - 1, h - 22);
+  dialogueCtx.lineTo(w - 22, h - 1);
+  dialogueCtx.lineTo(1, h - 1);
+  dialogueCtx.lineTo(1, 18);
+  dialogueCtx.closePath();
+
+  dialogueCtx.fillStyle = "rgba(2,8,14,0.92)";
+  dialogueCtx.fill();
+
+  dialogueCtx.save();
+  dialogueCtx.clip();
+
+  dialogueCtx.strokeStyle = "rgba(45,190,220,0.16)";
+  dialogueCtx.lineWidth = 1;
+
+  for (let x = 16; x < w; x += 32) {
+    dialogueCtx.beginPath();
+    dialogueCtx.moveTo(x, 0);
+    dialogueCtx.lineTo(x, h);
+    dialogueCtx.stroke();
+  }
+
+  for (let y = 16; y < h; y += 24) {
+    dialogueCtx.beginPath();
+    dialogueCtx.moveTo(0, y);
+    dialogueCtx.lineTo(w, y);
+    dialogueCtx.stroke();
+  }
+
+  dialogueCtx.restore();
+
+  dialogueCtx.strokeStyle = "rgba(110,245,255,0.95)";
+  dialogueCtx.lineWidth = 2;
+  dialogueCtx.beginPath();
+  dialogueCtx.moveTo(18, 0);
+  dialogueCtx.lineTo(w - 1, 0);
+  dialogueCtx.lineTo(w - 1, h - 22);
+  dialogueCtx.lineTo(w - 22, h - 1);
+  dialogueCtx.lineTo(1, h - 1);
+  dialogueCtx.lineTo(1, 18);
+  dialogueCtx.closePath();
+  dialogueCtx.stroke();
+
+  dialogueCtx.strokeStyle = "rgba(255,60,140,0.8)";
+  dialogueCtx.lineWidth = 2;
+  dialogueCtx.beginPath();
+  dialogueCtx.moveTo(0, 0);
+  dialogueCtx.lineTo(44, 0);
+  dialogueCtx.moveTo(w - 96, h - 1);
+  dialogueCtx.lineTo(w - 28, h - 1);
+  dialogueCtx.stroke();
+
+  dialogueCtx.fillStyle = "rgba(80,240,255,0.75)";
+  dialogueCtx.fillRect(18, h - 16, 86, 2);
+  dialogueCtx.fillStyle = "rgba(255,60,140,0.65)";
+  dialogueCtx.fillRect(w - 130, 15, 58, 2);
 }
 
 function drawDialogueText(text, x, y, maxWidth, lineHeight) {
@@ -1556,10 +1703,24 @@ function drawTitle() {
 // ストーリー画面描画
 // ====================
 
-function drawStoryCharacter(img, side, active) {
+function drawStoryCharacter(character, side, active) {
+
+  const state = storyCharacterStates[character];
+
+  if (!state || !state.visible) return;
+
+  const images = storyImages[character];
+  const img = images[state.face] || images.normal;
 
   if (!imageReady(img)) return;
 
+  const progress = Math.min(
+    state.animFrame / STORY_CHARACTER_ENTER_FRAMES,
+    1
+  );
+  const slideOffset = (1 - progress) *
+    STORY_CHARACTER_SLIDE *
+    (side === "left" ? -1 : 1);
   const targetH = 390;
   const scale = targetH / img.naturalHeight;
   const targetW = img.naturalWidth * scale;
@@ -1568,13 +1729,16 @@ function drawStoryCharacter(img, side, active) {
     : canvas.width - targetW - 36;
   const y = canvas.height - targetH;
 
+  ctx.save();
+  ctx.globalAlpha = progress;
   ctx.drawImage(
     img,
-    x,
+    x + slideOffset,
     y,
     targetW,
     targetH
   );
+  ctx.restore();
 
   if (!active) {
     storyMaskCanvas.width = targetW;
@@ -1605,44 +1769,29 @@ function drawStoryCharacter(img, side, active) {
 
     ctx.drawImage(
       storyMaskCanvas,
-      x,
+      x + slideOffset,
       y
     );
   }
-}
-
-function currentStoryFace(character) {
-
-  let face = "normal";
-
-  for (let i = 0; i <= storyLineIndex; i++) {
-    if (STORY_LINES[i].character === character) {
-      face = STORY_LINES[i].face || "normal";
-    }
-  }
-
-  return face;
 }
 
 function drawStory() {
 
   const line = STORY_LINES[storyLineIndex];
   const isLastLine = storyLineIndex === STORY_LINES.length - 1;
-  const tachikageFace = currentStoryFace("tachikage");
-  const sherryFace = currentStoryFace("sherry");
 
   drawBackground();
   ctx.fillStyle = "rgba(0,0,0,0.38)";
   ctx.fillRect(0, 0, canvas.width, canvas.height);
 
   drawStoryCharacter(
-    storyImages.tachikage[tachikageFace],
+    "tachikage",
     "left",
     line.character === "tachikage"
   );
 
   drawStoryCharacter(
-    storyImages.sherry[sherryFace],
+    "sherry",
     "right",
     line.character === "sherry"
   );
